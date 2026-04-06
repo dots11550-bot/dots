@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dots</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300&family=Space+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #f5f0e8;
+    --dust: #d4c9b8;
+    --ink: #1a1612;
+    --blush: #e8d5c4;
+    --shadow: rgba(26,22,18,0.18);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--cream);
+    font-family: 'Cormorant Garamond', serif;
+    cursor: crosshair;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    background-size: 180px;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+  }
+
+  /* ── ENTER SCREEN ── */
+  #enter-screen {
+    position: fixed; inset: 0;
+    background: var(--cream);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    transition: opacity 0.9s ease, visibility 0.9s ease;
+  }
+  #enter-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  #enter-title {
+    font-style: italic;
+    font-weight: 300;
+    font-size: 4rem;
+    color: var(--ink);
+    letter-spacing: 0.12em;
+    opacity: 0.85;
+  }
+  #enter-btn {
+    background: none;
+    border: 1px solid rgba(26,22,18,0.3);
+    color: var(--ink);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 12px 32px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s, border-color 0.2s, transform 0.2s;
+    margin-top: 8px;
+  }
+  #enter-btn:hover {
+    opacity: 1;
+    border-color: var(--ink);
+    transform: translateY(-2px);
+  }
+  #enter-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink);
+    opacity: 0.25;
+  }
+
+  #stage {
+    position: fixed; inset: 0;
+    overflow: hidden;
+  }
+
+  .photo {
+    position: absolute;
+    cursor: grab;
+    will-change: transform;
+    transform-origin: center center;
+    transition: box-shadow 0.3s ease;
+    user-select: none;
+  }
+  .photo:active { cursor: grabbing; }
+  .photo:hover { z-index: 1000 !important; }
+  .photo:hover .photo-inner { box-shadow: 0 20px 60px var(--shadow), 0 4px 15px var(--shadow); }
+
+  .photo-inner {
+    position: relative;
+    background: white;
+    padding: 10px 10px 32px;
+    box-shadow: 0 8px 30px var(--shadow), 0 2px 8px var(--shadow);
+    transition: box-shadow 0.3s ease;
+  }
+  .photo-inner img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    filter: contrast(0.97) saturate(0.92);
+  }
+  .photo-inner .caption {
+    position: absolute;
+    bottom: 6px; left: 0; right: 0;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    color: #999;
+    font-family: 'Space Mono', monospace;
+  }
+
+  #ui {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 28px;
+    z-index: 10000;
+    pointer-events: none;
+  }
+
+  #logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 2.4rem;
+    color: var(--ink);
+    letter-spacing: 0.08em;
+    opacity: 0.85;
+    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(255,255,255,0.8);
+  }
+
+  #upload-btn {
+    pointer-events: all;
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    padding: 10px 22px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 0.2s, transform 0.15s;
+    opacity: 0.88;
+  }
+  #upload-btn:hover { background: #3a332a; transform: translateY(-1px); opacity: 1; }
+  #file-input { display: none; }
+
+  #player {
+    position: fixed;
+    bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(245,240,232,0.88);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(26,22,18,0.12);
+    padding: 10px 18px;
+    pointer-events: all;
+  }
+  #play-pause {
+    background: none; border: none;
+    cursor: pointer;
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink);
+    transition: transform 0.15s;
+  }
+  #play-pause:hover { transform: scale(1.15); }
+  #track-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+  .dot-vis { display: flex; gap: 3px; align-items: center; }
+  .dot-vis span {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--ink);
+    opacity: 0.5;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .dot-vis span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-vis span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse {
+    0%,100% { transform: scaleY(1); opacity: 0.4; }
+    50% { transform: scaleY(2.2); opacity: 0.9; }
+  }
+  .dot-vis.paused span { animation-play-state: paused; }
+
+  #empty-msg {
+    position: fixed; inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 100;
+    transition: opacity 0.6s;
+  }
+  #empty-msg p {
+    font-style: italic;
+    font-size: 1.3rem;
+    color: var(--ink);
+    opacity: 0.3;
+    letter-spacing: 0.06em;
+  }
+  #empty-msg small {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--ink);
+    opacity: 0.2;
+    margin-top: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<!-- ENTER SCREEN -->
+<div id="enter-screen">
+  <div id="enter-title">dots</div>
+  <div id="enter-sub">a place for your memories</div>
+  <button id="enter-btn">enter</button>
+</div>
+
+<div id="stage"></div>
+
+<div id="ui">
+  <span id="logo">dots</span>
+  <button id="upload-btn">+ add photos</button>
+  <input type="file" id="file-input" accept="image/*" multiple>
+</div>
+
+<div id="empty-msg">
+  <p>your memories live here</p>
+  <small>upload photos to begin</small>
+</div>
+
+<div id="player">
+  <button id="play-pause" title="play/pause">
+    <svg id="icon-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    <svg id="icon-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+  </button>
+  <div class="dot-vis paused" id="dot-vis">
+    <span></span><span></span><span></span>
+  </div>
+  <span id="track-name">sleepyhead — passion pit</span>
+</div>
+
+<audio id="audio" src="song.mp3" loop></audio>
+
+<script>
+const audio = document.getElementById('audio');
+audio.volume = 0.55;
+
+const playBtn    = document.getElementById('play-pause');
+const iconPlay   = document.getElementById('icon-play');
+const iconPause  = document.getElementById('icon-pause');
+const dotVis     = document.getElementById('dot-vis');
+const enterScreen = document.getElementById('enter-screen');
+const enterBtn   = document.getElementById('enter-btn');
+
+function setPlaying(playing) {
+  iconPlay.style.display  = playing ? 'none' : '';
+  iconPause.style.display = playing ? '' : 'none';
+  dotVis.classList.toggle('paused', !playing);
+}
+
+// Enter button — starts music immediately
+enterBtn.addEventListener('click', () => {
+  enterScreen.classList.add('hidden');
+  audio.play().then(() => setPlaying(true)).catch(() => {});
+});
+
+// Manual play/pause
+playBtn.addEventListener('click', () => {
+  if (audio.paused) { audio.play(); setPlaying(true); }
+  else { audio.pause(); setPlaying(false); }
+});
+
+// ─── INDEXEDDB ────────────────────────────────────────────────────────────
+let db;
+const DB_NAME = 'dots_db', STORE = 'photos', DB_VER = 1;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE))
+        d.createObjectStore(STORE, { keyPath: 'id' });
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror   = rej;
+  });
+}
+
+function savePhoto(id, dataUrl) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put({ id, dataUrl, ts: Date.now() });
+    tx.oncomplete = res; tx.onerror = rej;
+  });
+}
+
+function loadAllPhotos() {
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = rej;
+  });
+}
+
+// ─── COLLAGE ──────────────────────────────────────────────────────────────
+const stage    = document.getElementById('stage');
+const emptyMsg = document.getElementById('empty-msg');
+let photoCount = 0;
+const SIZES    = [160, 190, 220, 250, 280, 140];
+
+function randBetween(a, b) { return a + Math.random() * (b - a); }
+
+function createPhotoEl(dataUrl, id) {
+  photoCount++;
+  emptyMsg.style.opacity = '0';
+
+  const size = SIZES[Math.floor(Math.random() * SIZES.length)];
+  const h    = Math.round(size * randBetween(0.75, 1.35));
+  const x    = randBetween(2, window.innerWidth  - size - 20);
+  const y    = randBetween(60, window.innerHeight - h   - 80);
+  const rot  = randBetween(-12, 12);
+  const zIndex = photoCount;
+
+  const dur = randBetween(18, 40);
+  const dx  = randBetween(-35, 35);
+  const dy  = randBetween(-25, 25);
+  const dr  = randBetween(-4, 4);
+
+  const animName = 'float_' + id.replace(/[^a-z0-9]/gi, '_');
+
+  const wrap = document.createElement('div');
+  wrap.className  = 'photo';
+  wrap.dataset.id = id;
+  wrap.style.cssText = `
+    left:${x}px; top:${y}px;
+    width:${size}px; height:${h + 42}px;
+    transform: rotate(${rot}deg);
+    z-index: ${zIndex};
+    animation: ${animName} ${dur}s ease-in-out infinite alternate;
+  `;
+
+  const inner = document.createElement('div');
+  inner.className = 'photo-inner';
+  inner.style.cssText = `width:${size}px; height:${h}px;`;
+
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.draggable = false;
+
+  const cap = document.createElement('div');
+  cap.className   = 'caption';
+  cap.textContent = '· · ·';
+
+  inner.appendChild(img);
+  inner.appendChild(cap);
+  wrap.appendChild(inner);
+  stage.appendChild(wrap);
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes ${animName} {
+      from { transform: rotate(${rot}deg) translate(0,0); }
+      to   { transform: rotate(${rot + dr}deg) translate(${dx}px,${dy}px); }
+    }
+  `;
+  document.head.appendChild(style);
+
+  makeDraggable(wrap);
+}
+
+function makeDraggable(el) {
+  let startX, startY, origLeft, origTop, dragging = false;
+  function getPos(e) {
+    return e.touches
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      : { x: e.clientX,            y: e.clientY            };
+  }
+  el.addEventListener('mousedown',  start);
+  el.addEventListener('touchstart', start, { passive: true });
+
+  function start(e) {
+    const p = getPos(e);
+    startX = p.x; startY = p.y;
+    origLeft = parseInt(el.style.left);
+    origTop  = parseInt(el.style.top);
+    dragging = true;
+    el.style.zIndex = ++photoCount;
+    el.style.animationPlayState = 'paused';
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup',   end);
+    document.addEventListener('touchmove', move, { passive: false });
+    document.addEventListener('touchend',  end);
+  }
+  function move(e) {
+    if (!dragging) return;
+    if (e.cancelable) e.preventDefault();
+    const p = getPos(e);
+    el.style.left = (origLeft + p.x - startX) + 'px';
+    el.style.top  = (origTop  + p.y - startY) + 'px';
+  }
+  function end() {
+    dragging = false;
+    el.style.animationPlayState = 'running';
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup',   end);
+    document.removeEventListener('touchmove', move);
+    document.removeEventListener('touchend',  end);
+  }
+}
+
+// ─── UPLOAD ───────────────────────────────────────────────────────────────
+document.getElementById('upload-btn').addEventListener('click', () => {
+  document.getElementById('file-input').click();
+});
+
+document.getElementById('file-input').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files);
+  for (const file of files) {
+    const dataUrl = await fileToDataUrl(file);
+    const id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    await savePhoto(id, dataUrl);
+    createPhotoEl(dataUrl, id);
+  }
+  e.target.value = '';
+});
+
+function fileToDataUrl(file) {
+  return new Promise((res) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.readAsDataURL(file);
+  });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+openDB().then(async () => {
+  const photos = await loadAllPhotos();
+  photos.sort((a, b) => a.ts - b.ts);
+  if (photos.length > 0) emptyMsg.style.opacity = '0';
+  for (const p of photos) createPhotoEl(p.dataUrl, p.id);
+}).catch(console.error);
+</script>
+</body>
+</html>
